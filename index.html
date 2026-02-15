@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/png" href="/Logo.png" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    
+    <!-- SEO Meta Tags -->
+    <title>De Vote - Decentralized Project Management</title>
+    <meta name="description" content="De Vote is a decentralized platform for project management, enabling NFT-gated proposals, voting, and name registration for creators.">
+    <meta name="keywords" content="De Vote, Web3, decentralized, project management, blockchain, voting, proposals, NFT, name registration">
+
+    <!-- Open Graph Meta Tags (for social media sharing) -->
+    <meta property="og:title" content="De Vote - Decentralized Project Management">
+    <meta property="og:description" content="De Vote is a decentralized platform for project management, enabling NFT-gated proposals, voting, and name registration for creators.">
+    <meta property="og:image" content="/Logo.png"> <!-- Replace with your actual, absolute URL in production -->
+    <meta property="og:url" content="https://vote.lookhook.info"> <!-- Assuming a new URL for the project, user can update -->
+    <meta property="og:type" content="website" />
+
+    <!-- Twitter Card Meta Tags -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="De Vote - Decentralized Project Management">
+    <meta name="twitter:description" content="De Vote is a decentralized platform for project management, enabling NFT-gated proposals, voting, and name registration for creators.">
+    <meta name="twitter:image" content="/Logo.png"> <!-- Replace with your actual, absolute URL in production -->
+
+  </head>
+  <body>
+    <div id="root"></div>
+    
+    <!-- BigInt serialization fix -->
+    <script>
+      // Fix for BigInt serialization error in React DevTools
+      BigInt.prototype.toJSON = function() {
+        return this.toString();
+      };
+    </script>
+    
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
