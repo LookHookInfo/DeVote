@@ -25,16 +25,10 @@ export default function DeVote() {
   } = useDeVoteContract();
 
   // --- Handlers ---
-  const handleCreateProposal = async (title: string, description: string, rewardAmount: string) => {
+  const handleCreateProposal = async (title: string, description: string, rewardAmount: string, vType: number) => {
     if (!account) return alert('Please connect your wallet.');
-    // No need to check hasOgNft here, as button will be disabled
-    if (!title || !description || !rewardAmount) return alert('Please fill all fields.');
-
-    const reward = Number(rewardAmount);
-    if (isNaN(reward) || reward <= 0) return alert('Reward must be a positive number.');
-
     try {
-      await createProposal(title, description, rewardAmount);
+      await createProposal(title, description, rewardAmount, vType);
       setStatus('idle');
     } catch (error) {
       console.error("Proposal creation failed:", error);

@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 
 interface ProgressTimerProps {
+  startTime: bigint;
   endTime: bigint;
-  initialDurationSeconds: number; // Added for fixed duration proposals
+  claimEndTime?: bigint; // Optional, for showing claim phase
 }
 
 const formatDateTime = (timestamp: bigint) => {
@@ -24,51 +25,44 @@ const formatTimeRemaining = (seconds: number) => {
   if (days > 0) parts.push(`${days}d`);
   if (hours > 0) parts.push(`${hours}h`);
   if (minutes > 0) parts.push(`${minutes}m`);
-  // Only show seconds if less than a minute, or if it's the only remaining part
+  
   if (parts.length === 0 && remainingSeconds > 0) parts.push(`${remainingSeconds}s`);
   else if (parts.length > 0 && days === 0 && hours === 0 && minutes === 0 && remainingSeconds > 0) parts.push(`${remainingSeconds}s`);
 
   return parts.join(' ');
 };
 
-export const ProgressTimer: React.FC<ProgressTimerProps> = ({ endTime, initialDurationSeconds }) => {
-  const [currentTime, setCurrentTime] = useState(Date.now());
-  const [showTooltip, setShowTooltip] = useState(false);
+export const ProgressTimer: React.FC<ProgressTimerProps> = ({ startTime, endTime, claimEndTime }) => {
+  const [currentTime, setCurrentTime] = useState(Math.floor(Date.now() / 1000));
 
   useEffect(() => {
     const timer = setInterval(() => {
-      setCurrentTime(Date.now());
-    }, 1000); // Update every second
+      setCurrentTime(Math.floor(Date.now() / 1000));
+    }, 1000);
 
-    return () => clearInterval(timer); // Cleanup on unmount
+    return () => clearInterval(timer);
   }, []);
 
-    const endTimeMs = Number(endTime) * 1000;
-
+  const totalDuration = Number(endTime - startTime);
+  const timeRemainingSeconds = Math.max(0, Number(endTime) - currentTime);
   
+  // Calculate progress
+  let progressPercentage = (timeRemainingSeconds / totalDuration) * 100;
+  progressPercentage = Math.max(0, Math.min(100, progressPercentage));
 
-    const timeRemainingMs = endTimeMs - currentTime;
-
-    const timeRemainingSeconds = Math.max(0, Math.floor(timeRemainingMs / 1000));
-  
-  // Calculate progress relative to the total duration
-  let progressPercentage = (timeRemainingSeconds / initialDurationSeconds) * 100;
-  progressPercentage = Math.max(0, Math.min(100, progressPercentage)); // Ensure it's between 0 and 100
-
-  // Aesthetic improvement: ensure minimum visibility for very small percentages remaining and time remaining > 0
   if (progressPercentage > 0 && progressPercentage < 5 && timeRemainingSeconds > 0) {
-    progressPercentage = 5; // Ensure at least 5% is visible if time remains
+    progressPercentage = 5;
   }
 
+  const isVotingEnded = currentTime > Number(endTime);
+  const isClaimActive = claimEndTime && currentTime > Number(endTime) && currentTime <= Number(claimEndTime);
+  const isAllEnded = claimEndTime && currentTime > Number(claimEndTime);
 
-  const progressColor = timeRemainingSeconds <= 0
-    ? 'bg-gray-500' // Ended
-    : 'bg-[#a5c2ff]'; // Consistent with custom-blue brand color
+  const progressColor = isVotingEnded 
+    ? (isClaimActive ? 'bg-orange-500' : 'bg-gray-500')
+    : 'bg-[#a5c2ff]';
 
-
-
-
-  const displayPercentage = Math.round(progressPercentage);
+  const [showTooltip, setShowTooltip] = useState(false);
 
   return (
     <div
@@ -80,18 +74,18 @@ export const ProgressTimer: React.FC<ProgressTimerProps> = ({ endTime, initialDu
         className={`h-full rounded-full transition-all duration-500 ease-out ${progressColor}`}
         style={{ width: `${progressPercentage}%` }}
       ></div>
-      {/* Tooltip on hover */}
+      
       {showTooltip && (
-        <div className="absolute z-10 p-2 text-xs text-white bg-gray-800 rounded-md shadow-lg -top-8 left-1/2 -translate-x-1/2 whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-          Ends: {formatDateTime(endTime)}
+        <div className="absolute z-10 p-2 text-xs text-white bg-gray-800 rounded-md shadow-lg -top-8 left-1/2 -translate-x-1/2 whitespace-nowrap opacity-100 transition-opacity duration-300">
+          Starts: {formatDateTime(startTime)} | Ends: {formatDateTime(endTime)}
         </div>
       )}
-      {/* Time remaining text inside the bar */}
+
       <div className="absolute inset-0 flex items-center justify-center text-xs font-semibold text-white px-2">
-        {timeRemainingSeconds <= 0 ? (
-          "Ended"
+        {isVotingEnded ? (
+           isClaimActive ? `Claiming Active (${formatTimeRemaining(Number(claimEndTime!) - currentTime)})` : "Archived"
         ) : (
-          `${formatTimeRemaining(timeRemainingSeconds)} (${displayPercentage}%)`
+          `${formatTimeRemaining(timeRemainingSeconds)} (${Math.round(progressPercentage)}%)`
         )}
       </div>
     </div>

@@ -1,32 +1,35 @@
 import { useState, useCallback, useMemo } from 'react';
 import { useActiveAccount, useSendAndConfirmTransaction } from 'thirdweb/react';
-import { prepareContractCall, toWei, readContract } from 'thirdweb';
-import { devoteContract, hashcoinContract, ogNftContract, farmNftContract } from '../utils/contracts'; // Added ogNftContract, farmNftContract
-import { useQueries, useQueryClient } from '@tanstack/react-query';
+import { prepareContractCall, readContract, toWei } from 'thirdweb';
+import { devoteContract, hashcoinContract, ogNftContract, farmNftContract } from '../utils/contracts';
+import { useQueries, useQueryClient, useQuery } from '@tanstack/react-query';
 import type { ThirdwebContract } from 'thirdweb';
 
-// Define Proposal type based on the Solidity struct
+export enum VoterType { FARM = 0, OG = 1 }
+
 export type Proposal = {
   id: bigint;
+  rewardAmount: bigint;
+  claimedAmount: bigint;
+  startTime: bigint;
+  endTime: bigint;
+  claimEndTime: bigint;
+  voterCount: number;
+  forVotes: number;
+  againstVotes: number;
+  abstainVotes: number;
+  voterType: VoterType;
   creator: string;
   title: string;
   description: string;
-  endTime: bigint;
-  forVotes: bigint;
-  againstVotes: bigint;
-  abstainVotes: bigint;
-  rewardAmount: bigint;
-  claimedAmount: bigint;
-  voterCount: bigint;
-  deleted: boolean;
+  // UI states
   hasUserVoted: boolean;
   hasUserClaimed: boolean;
-  userRewardAmount: bigint; // Added for individual user's reward
+  userRewardAmount: bigint;
 };
 
 export type DeVoteStatus = 'idle' | 'pending' | 'success' | 'error';
 
-// Helper function from optimization plan to structure queries
 const createThirdwebQuery = ({
   contract,
   method,
@@ -42,7 +45,7 @@ const createThirdwebQuery = ({
   return {
     queryKey,
     queryFn: () => readContract({ contract, method, params }),
-    staleTime: 1000 * 60, // 1 minute
+    staleTime: 1000 * 60,
     refetchOnWindowFocus: false,
     ...queryOptions,
   };
@@ -56,356 +59,214 @@ export function useDeVoteContract() {
 
   const accountAddress = account?.address || '0x0000000000000000000000000000000000000000';
 
-  // State for pending transactions specific to proposal IDs
   const [creatingProposalPending, setCreatingProposalPending] = useState(false);
   const [votingPending, setVotingPending] = useState<Set<bigint>>(new Set());
   const [claimingPending, setClaimingPending] = useState<Set<bigint>>(new Set());
 
-  const queries = useMemo(() => {
-    return [
-      // 0: HASH_TOKEN balance of user (for createProposal approval)
-      createThirdwebQuery({
-        contract: hashcoinContract,
-        method: 'balanceOf',
-        params: [accountAddress],
-        queryOptions: { enabled: !!account?.address },
-      }),
-      // 1: HASH_TOKEN allowance for devoteContract (for createProposal approval)
-      createThirdwebQuery({
-        contract: hashcoinContract,
-        method: 'allowance',
-        params: [accountAddress, devoteContract.address],
-        queryOptions: { enabled: !!account?.address },
-      }),
-      // 2: activeProposalsIds
-      createThirdwebQuery({
-        contract: devoteContract,
-        method: 'getActiveProposals',
-        params: [],
-      }),
-      // 3: finishedProposalsIds
-      createThirdwebQuery({
-        contract: devoteContract,
-        method: 'getFinishedProposals',
-        params: [],
-      }),
-      // 4: OG_NFT balance of user
-      createThirdwebQuery({
-        contract: ogNftContract,
-        method: 'balanceOf',
-        params: [accountAddress],
-        queryOptions: { enabled: !!account?.address },
-      }),
-      // 5: FARM_NFT balance of user
-      createThirdwebQuery({
-        contract: farmNftContract,
-        method: 'balanceOf',
-        params: [accountAddress],
-        queryOptions: { enabled: !!account?.address },
-      }),
-    ];
-  }, [account?.address, accountAddress]);
+  // 1. Core queries
+  const baseQueries = useMemo(() => [
+    createThirdwebQuery({
+      contract: hashcoinContract,
+      method: 'balanceOf',
+      params: [accountAddress],
+      queryOptions: { enabled: !!account?.address },
+    }),
+    createThirdwebQuery({
+      contract: hashcoinContract,
+      method: 'allowance',
+      params: [accountAddress, devoteContract.address],
+      queryOptions: { enabled: !!account?.address },
+    }),
+    createThirdwebQuery({
+      contract: devoteContract,
+      method: 'proposalCount',
+      params: [],
+    }),
+    createThirdwebQuery({
+      contract: ogNftContract,
+      method: 'balanceOf',
+      params: [accountAddress],
+      queryOptions: { enabled: !!account?.address },
+    }),
+    createThirdwebQuery({
+      contract: farmNftContract,
+      method: 'balanceOf',
+      params: [accountAddress],
+      queryOptions: { enabled: !!account?.address },
+    }),
+  ], [account?.address, accountAddress]);
 
-  const queryResults = useQueries({
-    queries,
-    combine: (results) => {
-      return {
-        hashBalanceResult: results[0],
-        hashAllowanceResult: results[1],
-        activeProposalsIdsResult: results[2],
-        finishedProposalsIdsResult: results[3],
-        ogNftBalanceResult: results[4], // New result
-        farmNftBalanceResult: results[5], // New result
-        isLoading: results.some((res) => res.isLoading),
-      };
-    },
-  });
+  const { data: hashBalance } = useQuery(baseQueries[0]);
+  const { data: hashAllowance } = useQuery(baseQueries[1]);
+  const { data: proposalCountBigInt } = useQuery(baseQueries[2]);
+  const { data: ogNftBalance } = useQuery(baseQueries[3]);
+  const { data: farmNftBalance } = useQuery(baseQueries[4]);
 
-  const {
-    hashBalanceResult,
-    hashAllowanceResult,
-    activeProposalsIdsResult,
-    finishedProposalsIdsResult,
-    ogNftBalanceResult, // New destructuring
-    farmNftBalanceResult, // New destructuring
-    isLoading: areQueriesLoading,
-  } = queryResults;
-
-  const hashBalance = hashBalanceResult.data as bigint | undefined;
-  const hashAllowance = hashAllowanceResult.data as bigint | undefined;
-  const activeProposalsIds = activeProposalsIdsResult.data as bigint[] | undefined;
-  const finishedProposalsIds = finishedProposalsIdsResult.data as bigint[] | undefined;
-
-  // Process NFT balances to boolean status
-  const hasOgNft = (ogNftBalanceResult.data as unknown as bigint || 0n) > 0n;
-  const hasFarmNft = (farmNftBalanceResult.data as unknown as bigint || 0n) > 0n;
+  const proposalCount = Number(proposalCountBigInt || 0n);
+  const hasOgNft = (ogNftBalance as unknown as bigint || 0n) > 0n;
+  const hasFarmNft = (farmNftBalance as unknown as bigint || 0n) > 0n;
 
   const invalidateDevoteQueries = useCallback(() => {
-    queryClient.invalidateQueries({ queryKey: queries[0].queryKey }); // hashBalance
-    queryClient.invalidateQueries({ queryKey: queries[1].queryKey }); // hashAllowance
-    queryClient.invalidateQueries({ queryKey: queries[2].queryKey }); // activeProposalsIds
-    queryClient.invalidateQueries({ queryKey: queries[3].queryKey }); // finishedProposalsIds
-    queryClient.invalidateQueries({ queryKey: queries[4].queryKey }); // ogNftBalance
-    queryClient.invalidateQueries({ queryKey: queries[5].queryKey }); // farmNftBalance
-    queryClient.invalidateQueries({ queryKey: [devoteContract.chain.id, devoteContract.address, 'getProposal'] });
-    queryClient.invalidateQueries({ queryKey: [devoteContract.chain.id, devoteContract.address, 'hasVoted'] });
-    queryClient.invalidateQueries({ queryKey: [devoteContract.chain.id, devoteContract.address, 'hasClaimed'] });
-  }, [queryClient, queries]);
+    queryClient.invalidateQueries({ queryKey: [devoteContract.chain.id, devoteContract.address] });
+    queryClient.invalidateQueries({ queryKey: [hashcoinContract.chain.id, hashcoinContract.address] });
+  }, [queryClient]);
 
-  const createProposal = useCallback(
-    async (title: string, description: string, rewardAmount: string) => {
-      if (!account) throw new Error('Not connected');
-      // No explicit OG_NFT check here yet, will be handled by UI disabled state
-      setCreatingProposalPending(true);
-      setStatus('pending');
+  // 2. Fetch proposal details
+  const getProposalDetails = useCallback(async (id: bigint): Promise<Proposal | null> => {
+    try {
+      const [p, hasVoted, hasClaimed] = await Promise.all([
+        readContract({ contract: devoteContract, method: 'proposals', params: [id] }),
+        account ? readContract({ contract: devoteContract, method: 'hasVoted', params: [id, account.address] }) : Promise.resolve(false),
+        account ? readContract({ contract: devoteContract, method: 'hasClaimed', params: [id, account.address] }) : Promise.resolve(false),
+      ]);
 
-      try {
-        const rewardAmountWei = toWei(rewardAmount);
+      const vc = p[5];
+      const voterCount = Number(vc >> 96n);
+      const forVotes = Number((vc >> 64n) & 0xFFFFFFFFn);
+      const againstVotes = Number((vc >> 32n) & 0xFFFFFFFFn);
+      const abstainVotes = Number(vc & 0xFFFFFFFFn);
 
-        // Check and approve HASH token if necessary
-        if (hashAllowance === undefined || hashAllowance < rewardAmountWei) {
-          const approveTx = prepareContractCall({
-            contract: hashcoinContract,
-            method: 'approve',
-            params: [devoteContract.address, rewardAmountWei],
-          });
-          await sendAndConfirm(approveTx);
-        }
+      return {
+        id,
+        rewardAmount: p[0],
+        claimedAmount: p[1],
+        startTime: p[2],
+        endTime: p[3],
+        claimEndTime: p[4],
+        voterCount,
+        forVotes,
+        againstVotes,
+        abstainVotes,
+        voterType: p[6] as VoterType,
+        creator: p[7],
+        title: p[8],
+        description: p[9],
+        hasUserVoted: hasVoted as boolean,
+        hasUserClaimed: hasClaimed as boolean,
+        userRewardAmount: voterCount > 0 ? p[0] / BigInt(voterCount) : 0n,
+      };
+    } catch (e) {
+      console.error(`Error fetching proposal ${id}:`, e);
+      return null;
+    }
+  }, [account]);
 
-        const tx = prepareContractCall({
-          contract: devoteContract,
-          method: 'createProposal',
-          params: [title, description, rewardAmountWei],
-        });
-        await sendAndConfirm(tx);
-        setStatus('success');
-        invalidateDevoteQueries();
-      } catch (err) {
-        setStatus('error');
-        console.error('Failed to create proposal:', err);
-      } finally {
-        setCreatingProposalPending(false);
-      }
-    },
-    [account, sendAndConfirm, invalidateDevoteQueries, hashAllowance],
-  );
+  // 3. Multi-query for all proposals
+  const proposalIds = useMemo(() => Array.from({ length: proposalCount }, (_, i) => BigInt(i + 1)), [proposalCount]);
 
-  const vote = useCallback(
-    async (proposalId: bigint, voteType: 0 | 1 | 2) => {
-      if (!account) throw new Error('Not connected');
-      // No explicit FARM_NFT check here yet, will be handled by UI disabled state
-      setVotingPending((prev) => new Set(prev).add(proposalId));
-      setStatus('pending');
+  const proposalsResults = useQueries({
+    queries: proposalIds.map(id => ({
+      queryKey: ['proposal', id.toString(), accountAddress],
+      queryFn: () => getProposalDetails(id),
+      staleTime: 1000 * 30,
+    }))
+  });
 
-      try {
-        const tx = prepareContractCall({
-          contract: devoteContract,
-          method: 'vote',
-          params: [proposalId, voteType],
-        });
-        await sendAndConfirm(tx);
-        setStatus('success');
-        invalidateDevoteQueries();
-      } catch (err) {
-        setStatus('error');
-        console.error(`Failed to vote on proposal ${proposalId}:`, err);
-      } finally {
-        setVotingPending((prev) => {
-          const next = new Set(prev);
-          next.delete(proposalId);
-          return next;
-        });
-      }
-    },
-    [account, sendAndConfirm, invalidateDevoteQueries],
-  );
+  const allProposals = useMemo(() => 
+    proposalsResults
+      .map(res => res.data)
+      .filter((p): p is Proposal => !!p)
+      .sort((a, b) => Number(b.id - a.id)),
+  [proposalsResults]);
 
-  const claimReward = useCallback(
-    async (proposalId: bigint) => {
-      if (!account) throw new Error('Not connected');
-      // No explicit FARM_NFT check here yet, will be handled by UI disabled state
-      setClaimingPending((prev) => new Set(prev).add(proposalId));
-      setStatus('pending');
-
-      try {
-        const tx = prepareContractCall({
-          contract: devoteContract,
-          method: 'claimReward',
-          params: [proposalId],
-        });
-        await sendAndConfirm(tx);
-        setStatus('success');
-        invalidateDevoteQueries();
-      } catch (err) {
-        setStatus('error');
-        console.error(`Failed to claim reward for proposal ${proposalId}:`, err);
-      } finally {
-        setClaimingPending((prev) => {
-          const next = new Set(prev);
-          next.delete(proposalId);
-          return next;
-        });
-      }
-    },
-    [account, sendAndConfirm, invalidateDevoteQueries],
-  );
-
-  // Helper function to fetch a single proposal and user voting status
-  const getProposalAndUserStatus = useCallback(
-    async (proposalId: bigint) => {
-      try {
-        // NOTE: We're not caching the readContract calls themselves with useQuery here
-        // because we are composing them. Instead, we wrap the composite call
-        // (getProposalAndUserStatus) in useQuery later on.
-        const [proposalDataRaw, hasVoted, hasClaimed] = await Promise.all([
-          readContract({
-            contract: devoteContract,
-            method: 'getProposal',
-            params: [proposalId],
-          }),
-          account ? readContract({
-            contract: devoteContract,
-            method: 'hasVoted',
-            params: [proposalId, account.address],
-          }) as Promise<boolean> : Promise.resolve(false),
-          account ? readContract({
-            contract: devoteContract,
-            method: 'hasClaimed',
-            params: [proposalId, account.address],
-          }) as Promise<boolean> : Promise.resolve(false),
-        ]);
-        const proposalObject = proposalDataRaw as {
-          id: bigint;
-          creator: string;
-          title: string;
-          description: string;
-          endTime: bigint;
-          forVotes: bigint;
-          againstVotes: bigint;
-          abstainVotes: bigint;
-          rewardAmount: bigint;
-          claimedAmount: bigint;
-          voterCount: bigint;
-          deleted: boolean;
-        };
-
-        const {
-          id,
-          creator,
-          title,
-          description,
-          endTime,
-          forVotes,
-          againstVotes,
-          abstainVotes,
-          rewardAmount,
-          claimedAmount,
-          voterCount,
-          deleted,
-        } = proposalObject;
-
-        const proposalData: Proposal = {
-          id,
-          creator,
-          title,
-          description,
-          endTime,
-          forVotes,
-          againstVotes,
-          abstainVotes,
-          rewardAmount,
-          claimedAmount,
-          voterCount,
-          deleted,
-          hasUserVoted: hasVoted,
-          hasUserClaimed: hasClaimed,
-          userRewardAmount: voterCount > 0n ? rewardAmount / voterCount : 0n, // Calculate individual user reward
-        };
-
-        if (id === 1n) { // Check for proposal ID 1
-          console.log("Proposal ID 1 details:", {
-            id: proposalData.id.toString(),
-            title: proposalData.title,
-            endTime: proposalData.endTime.toString(),
-            deleted: proposalData.deleted,
-            currentTime: Math.floor(Date.now() / 1000),
-            isEnded: Math.floor(Date.now() / 1000) > Number(proposalData.endTime),
-          });
-        }
-
-        // The return shape is important for useQuery
-        return { proposal: proposalData, hasVoted, hasClaimed };
-      } catch (error) {
-        console.error(`Error fetching proposal ${proposalId} or user status:`, error);
-        return null;
-      }
-    },
-    [account],
-  );
-
-  // --- NEW CACHING LOGIC ---
-
-  // Create memoized queries for individual active proposals
-  const activeProposalQueries = useMemo(() => {
-    return (activeProposalsIds || []).map(id => ({
-      queryKey: ['proposal', String(id), accountAddress], // Use string representation of BigInt in queryKey
-      queryFn: () => getProposalAndUserStatus(id),
-      staleTime: 1000 * 60, // 1 minute
-      enabled: !!activeProposalsIds,
-    }));
-  }, [activeProposalsIds, getProposalAndUserStatus, accountAddress]);
-
-  const activeProposalsResults = useQueries({ queries: activeProposalQueries });
-
-  // Create memoized queries for individual finished proposals
-  const finishedProposalQueries = useMemo(() => {
-    return (finishedProposalsIds || []).map(id => ({
-      queryKey: ['proposal', String(id), accountAddress],
-      queryFn: () => getProposalAndUserStatus(id),
-      staleTime: 1000 * 60 * 5, // 5 minutes for finished proposals
-      enabled: !!finishedProposalsIds,
-    }));
-  }, [finishedProposalsIds, getProposalAndUserStatus, accountAddress]);
-
-  const finishedProposalsResults = useQueries({ queries: finishedProposalQueries });
-
-  // Process the results into final proposal arrays
+  const now = BigInt(Math.floor(Date.now() / 1000));
+  
+  // LOGIC SPLIT:
+  // 1. Voting phase (now < endTime)
   const activeProposals = useMemo(() => 
-    activeProposalsResults
-      .map(res => res.data?.proposal)
-      .filter((p): p is Proposal => !!p && !p.deleted)
-      .sort((a, b) => Number(b.endTime - a.endTime)), // Sort by newest first
-    [activeProposalsResults]
-  );
+    allProposals.filter(p => now < p.endTime), 
+  [allProposals, now]);
 
+  // 2. Claiming phase (endTime <= now <= claimEndTime)
   const finishedProposals = useMemo(() => 
-    finishedProposalsResults
-      .map(res => res.data?.proposal)
-      .filter((p): p is Proposal => !!p && !p.deleted)
-      .sort((a, b) => Number(b.endTime - a.endTime)), // Sort by most recently finished
-    [finishedProposalsResults]
-  );
+    allProposals.filter(p => now >= p.endTime && now <= p.claimEndTime),
+  [allProposals, now]);
 
-  const isAllProposalsFetching = 
-    activeProposalsResults.some(r => r.isFetching) || 
-    finishedProposalsResults.some(r => r.isFetching);
+  // 3. Archived (now > claimEndTime)
+  const archivedProposals = useMemo(() => 
+    allProposals.filter(p => now > p.claimEndTime),
+  [allProposals, now]);
 
+  // Actions
+  const createProposal = useCallback(async (title: string, description: string, rewardAmount: string, vType: VoterType) => {
+    if (!account) throw new Error('Not connected');
+    setCreatingProposalPending(true);
+    setStatus('pending');
+    try {
+      const rewardWei = toWei(rewardAmount);
+      if (hashAllowance === undefined || hashAllowance < rewardWei) {
+        const approveTx = prepareContractCall({
+          contract: hashcoinContract,
+          method: 'approve',
+          params: [devoteContract.address, rewardWei],
+        });
+        await sendAndConfirm(approveTx);
+        await queryClient.invalidateQueries({ queryKey: [hashcoinContract.chain.id, hashcoinContract.address, 'allowance'] });
+      }
+      const tx = prepareContractCall({
+        contract: devoteContract,
+        method: 'createProposal',
+        params: [title, description, rewardWei, vType],
+      });
+      await sendAndConfirm(tx);
+      setStatus('success');
+      invalidateDevoteQueries();
+    } catch (err) {
+      setStatus('error');
+      console.error('Create Proposal Failed:', err);
+      throw err;
+    } finally {
+      setCreatingProposalPending(false);
+    }
+  }, [account, sendAndConfirm, invalidateDevoteQueries, hashAllowance, queryClient]);
+
+  const vote = useCallback(async (proposalId: bigint, voteType: 0 | 1 | 2) => {
+    if (!account) throw new Error('Not connected');
+    setVotingPending(prev => new Set(prev).add(proposalId));
+    try {
+      const tx = prepareContractCall({ contract: devoteContract, method: 'vote', params: [proposalId, voteType] });
+      await sendAndConfirm(tx);
+      invalidateDevoteQueries();
+    } finally {
+      setVotingPending(prev => {
+        const next = new Set(prev);
+        next.delete(proposalId);
+        return next;
+      });
+    }
+  }, [account, sendAndConfirm, invalidateDevoteQueries]);
+
+  const claimReward = useCallback(async (proposalId: bigint) => {
+    if (!account) throw new Error('Not connected');
+    setClaimingPending(prev => new Set(prev).add(proposalId));
+    try {
+      const tx = prepareContractCall({ contract: devoteContract, method: 'claimReward', params: [proposalId] });
+      await sendAndConfirm(tx);
+      invalidateDevoteQueries();
+    } finally {
+      setClaimingPending(prev => {
+        const next = new Set(prev);
+        next.delete(proposalId);
+        return next;
+      });
+    }
+  }, [account, sendAndConfirm, invalidateDevoteQueries]);
 
   return {
-    hashBalance,
-    hashAllowance,
+    hashBalance: hashBalance as bigint | undefined,
+    hashAllowance: hashAllowance as bigint | undefined,
     activeProposals,
     finishedProposals,
-    isLoading: areQueriesLoading || isAllProposalsFetching,
+    archivedProposals,
+    isLoading: proposalsResults.some(r => r.isLoading),
     status,
     setStatus,
     createProposal,
     vote,
     claimReward,
-    // getProposalAndUserStatus no longer returned directly, but used internally
     isCreatingProposalPending: creatingProposalPending,
-    isVotingPending: useCallback((id: bigint) => votingPending.has(id), [votingPending]),
-    isClaimingPending: useCallback((id: bigint) => claimingPending.has(id), [claimingPending]),
+    isVotingPending: (id: bigint) => votingPending.has(id),
+    isClaimingPending: (id: bigint) => claimingPending.has(id),
     hasOgNft,
     hasFarmNft,
   };

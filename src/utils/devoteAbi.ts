@@ -2,12 +2,12 @@ export const devoteAbi = [
 	{
 		"inputs": [
 			{
-				"internalType": "address",
-				"name": "user",
-				"type": "address"
+				"internalType": "uint256",
+				"name": "id",
+				"type": "uint256"
 			}
 		],
-		"name": "addToBlacklist",
+		"name": "cancelProposal",
 		"outputs": [],
 		"stateMutability": "nonpayable",
 		"type": "function"
@@ -16,7 +16,7 @@ export const devoteAbi = [
 		"inputs": [
 			{
 				"internalType": "uint256",
-				"name": "proposalId",
+				"name": "id",
 				"type": "uint256"
 			}
 		],
@@ -35,12 +35,24 @@ export const devoteAbi = [
 		"inputs": [
 			{
 				"indexed": true,
+				"internalType": "uint256",
+				"name": "id",
+				"type": "uint256"
+			},
+			{
+				"indexed": true,
 				"internalType": "address",
-				"name": "user",
+				"name": "voter",
 				"type": "address"
+			},
+			{
+				"indexed": false,
+				"internalType": "uint256",
+				"name": "amount",
+				"type": "uint256"
 			}
 		],
-		"name": "Blacklisted",
+		"name": "Claimed",
 		"type": "event"
 	},
 	{
@@ -56,9 +68,14 @@ export const devoteAbi = [
 				"type": "string"
 			},
 			{
-				"internalType": "uint256",
-				"name": "rewardAmount",
-				"type": "uint256"
+				"internalType": "uint128",
+				"name": "reward",
+				"type": "uint128"
+			},
+			{
+				"internalType": "enum DeVote.VoterType",
+				"name": "vType",
+				"type": "uint8"
 			}
 		],
 		"name": "createProposal",
@@ -72,27 +89,14 @@ export const devoteAbi = [
 				"internalType": "uint256",
 				"name": "proposalId",
 				"type": "uint256"
-			}
-		],
-		"name": "deleteProposal",
-		"outputs": [],
-		"stateMutability": "nonpayable",
-		"type": "function"
-	},
-	{
-		"inputs": [
-			{
-				"internalType": "uint256",
-				"name": "proposalId",
-				"type": "uint256"
 			},
 			{
-				"internalType": "uint256",
-				"name": "extraTimeSeconds",
-				"type": "uint256"
+				"internalType": "uint64",
+				"name": "extraSeconds",
+				"type": "uint64"
 			}
 		],
-		"name": "extendProposalTime",
+		"name": "extendVotingTime",
 		"outputs": [],
 		"stateMutability": "nonpayable",
 		"type": "function"
@@ -102,18 +106,24 @@ export const devoteAbi = [
 		"inputs": [
 			{
 				"indexed": true,
-				"internalType": "address",
-				"name": "previousOwner",
-				"type": "address"
+				"internalType": "uint256",
+				"name": "id",
+				"type": "uint256"
 			},
 			{
 				"indexed": true,
 				"internalType": "address",
-				"name": "newOwner",
+				"name": "creator",
 				"type": "address"
+			},
+			{
+				"indexed": false,
+				"internalType": "uint128",
+				"name": "refund",
+				"type": "uint128"
 			}
 		],
-		"name": "OwnershipTransferred",
+		"name": "ProposalCancelled",
 		"type": "event"
 	},
 	{
@@ -133,19 +143,50 @@ export const devoteAbi = [
 			},
 			{
 				"indexed": false,
+				"internalType": "uint128",
+				"name": "reward",
+				"type": "uint128"
+			},
+			{
+				"indexed": false,
+				"internalType": "enum DeVote.VoterType",
+				"name": "vType",
+				"type": "uint8"
+			},
+			{
+				"indexed": false,
+				"internalType": "string",
+				"name": "title",
+				"type": "string"
+			}
+		],
+		"name": "Proposed",
+		"type": "event"
+	},
+	{
+		"anonymous": false,
+		"inputs": [
+			{
+				"indexed": true,
+				"internalType": "uint256",
+				"name": "id",
+				"type": "uint256"
+			},
+			{
+				"indexed": false,
 				"internalType": "uint256",
 				"name": "amount",
 				"type": "uint256"
 			}
 		],
-		"name": "ProposalCreated",
+		"name": "Refunded",
 		"type": "event"
 	},
 	{
 		"inputs": [
 			{
 				"internalType": "uint256",
-				"name": "proposalId",
+				"name": "id",
 				"type": "uint256"
 			}
 		],
@@ -160,62 +201,30 @@ export const devoteAbi = [
 				"internalType": "address",
 				"name": "user",
 				"type": "address"
+			},
+			{
+				"internalType": "bool",
+				"name": "status",
+				"type": "bool"
 			}
 		],
-		"name": "removeFromBlacklist",
+		"name": "setBlacklist",
 		"outputs": [],
 		"stateMutability": "nonpayable",
 		"type": "function"
 	},
 	{
-		"anonymous": false,
 		"inputs": [
 			{
-				"indexed": true,
 				"internalType": "uint256",
-				"name": "proposalId",
-				"type": "uint256"
-			},
-			{
-				"indexed": true,
-				"internalType": "address",
-				"name": "voter",
-				"type": "address"
-			},
-			{
-				"indexed": false,
-				"internalType": "uint256",
-				"name": "amount",
+				"name": "newDuration",
 				"type": "uint256"
 			}
 		],
-		"name": "RewardClaimed",
-		"type": "event"
-	},
-	{
-		"anonymous": false,
-		"inputs": [
-			{
-				"indexed": true,
-				"internalType": "uint256",
-				"name": "proposalId",
-				"type": "uint256"
-			},
-			{
-				"indexed": true,
-				"internalType": "address",
-				"name": "creator",
-				"type": "address"
-			},
-			{
-				"indexed": false,
-				"internalType": "uint256",
-				"name": "amount",
-				"type": "uint256"
-			}
-		],
-		"name": "RewardRefunded",
-		"type": "event"
+		"name": "setVotingDuration",
+		"outputs": [],
+		"stateMutability": "nonpayable",
+		"type": "function"
 	},
 	{
 		"inputs": [
@@ -231,23 +240,10 @@ export const devoteAbi = [
 		"type": "function"
 	},
 	{
-		"anonymous": false,
-		"inputs": [
-			{
-				"indexed": true,
-				"internalType": "address",
-				"name": "user",
-				"type": "address"
-			}
-		],
-		"name": "UnBlacklisted",
-		"type": "event"
-	},
-	{
 		"inputs": [
 			{
 				"internalType": "uint256",
-				"name": "proposalId",
+				"name": "id",
 				"type": "uint256"
 			},
 			{
@@ -267,7 +263,7 @@ export const devoteAbi = [
 			{
 				"indexed": true,
 				"internalType": "uint256",
-				"name": "proposalId",
+				"name": "id",
 				"type": "uint256"
 			},
 			{
@@ -283,27 +279,8 @@ export const devoteAbi = [
 				"type": "uint8"
 			}
 		],
-		"name": "VoteCast",
+		"name": "Voted",
 		"type": "event"
-	},
-	{
-		"inputs": [
-			{
-				"internalType": "uint256",
-				"name": "",
-				"type": "uint256"
-			}
-		],
-		"name": "allProposalIds",
-		"outputs": [
-			{
-				"internalType": "uint256",
-				"name": "",
-				"type": "uint256"
-			}
-		],
-		"stateMutability": "view",
-		"type": "function"
 	},
 	{
 		"inputs": [
@@ -326,6 +303,19 @@ export const devoteAbi = [
 	},
 	{
 		"inputs": [],
+		"name": "CLAIM_DURATION",
+		"outputs": [
+			{
+				"internalType": "uint256",
+				"name": "",
+				"type": "uint256"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [],
 		"name": "FARM_NFT",
 		"outputs": [
 			{
@@ -338,107 +328,34 @@ export const devoteAbi = [
 		"type": "function"
 	},
 	{
-		"inputs": [],
-		"name": "getActiveProposals",
-		"outputs": [
-			{
-				"internalType": "uint256[]",
-				"name": "",
-				"type": "uint256[]"
-			}
-		],
-		"stateMutability": "view",
-		"type": "function"
-	},
-	{
-		"inputs": [],
-		"name": "getFinishedProposals",
-		"outputs": [
-			{
-				"internalType": "uint256[]",
-				"name": "",
-				"type": "uint256[]"
-			}
-		],
-		"stateMutability": "view",
-		"type": "function"
-	},
-	{
 		"inputs": [
 			{
 				"internalType": "uint256",
-				"name": "proposalId",
+				"name": "id",
 				"type": "uint256"
 			}
 		],
-		"name": "getProposal",
+		"name": "getVoteDetails",
 		"outputs": [
 			{
-				"components": [
-					{
-						"internalType": "uint256",
-						"name": "id",
-						"type": "uint256"
-					},
-					{
-						"internalType": "address",
-						"name": "creator",
-						"type": "address"
-					},
-					{
-						"internalType": "string",
-						"name": "title",
-						"type": "string"
-					},
-					{
-						"internalType": "string",
-						"name": "description",
-						"type": "string"
-					},
-					{
-						"internalType": "uint256",
-						"name": "endTime",
-						"type": "uint256"
-					},
-					{
-						"internalType": "uint256",
-						"name": "forVotes",
-						"type": "uint256"
-					},
-					{
-						"internalType": "uint256",
-						"name": "againstVotes",
-						"type": "uint256"
-					},
-					{
-						"internalType": "uint256",
-						"name": "abstainVotes",
-						"type": "uint256"
-					},
-					{
-						"internalType": "uint256",
-						"name": "rewardAmount",
-						"type": "uint256"
-					},
-					{
-						"internalType": "uint256",
-						"name": "claimedAmount",
-						"type": "uint256"
-					},
-					{
-						"internalType": "uint256",
-						"name": "voterCount",
-						"type": "uint256"
-					},
-					{
-						"internalType": "bool",
-						"name": "deleted",
-						"type": "bool"
-					}
-				],
-				"internalType": "struct DeVote.Proposal",
-				"name": "",
-				"type": "tuple"
+				"internalType": "uint32",
+				"name": "voterCount",
+				"type": "uint32"
+			},
+			{
+				"internalType": "uint32",
+				"name": "forVotes",
+				"type": "uint32"
+			},
+			{
+				"internalType": "uint32",
+				"name": "againstVotes",
+				"type": "uint32"
+			},
+			{
+				"internalType": "uint32",
+				"name": "abstainVotes",
+				"type": "uint32"
 			}
 		],
 		"stateMutability": "view",
@@ -506,6 +423,25 @@ export const devoteAbi = [
 		"type": "function"
 	},
 	{
+		"inputs": [
+			{
+				"internalType": "uint256",
+				"name": "id",
+				"type": "uint256"
+			}
+		],
+		"name": "isArchived",
+		"outputs": [
+			{
+				"internalType": "bool",
+				"name": "",
+				"type": "bool"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
 		"inputs": [],
 		"name": "OG_NFT",
 		"outputs": [
@@ -555,9 +491,39 @@ export const devoteAbi = [
 		"name": "proposals",
 		"outputs": [
 			{
-				"internalType": "uint256",
-				"name": "id",
-				"type": "uint256"
+				"internalType": "uint128",
+				"name": "rewardAmount",
+				"type": "uint128"
+			},
+			{
+				"internalType": "uint128",
+				"name": "claimedAmount",
+				"type": "uint128"
+			},
+			{
+				"internalType": "uint64",
+				"name": "startTime",
+				"type": "uint64"
+			},
+			{
+				"internalType": "uint64",
+				"name": "endTime",
+				"type": "uint64"
+			},
+			{
+				"internalType": "uint64",
+				"name": "claimEndTime",
+				"type": "uint64"
+			},
+			{
+				"internalType": "uint128",
+				"name": "voteCounts",
+				"type": "uint128"
+			},
+			{
+				"internalType": "enum DeVote.VoterType",
+				"name": "voterType",
+				"type": "uint8"
 			},
 			{
 				"internalType": "address",
@@ -573,46 +539,19 @@ export const devoteAbi = [
 				"internalType": "string",
 				"name": "description",
 				"type": "string"
-			},
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [],
+		"name": "VOTING_DURATION",
+		"outputs": [
 			{
 				"internalType": "uint256",
-				"name": "endTime",
+				"name": "",
 				"type": "uint256"
-			},
-			{
-				"internalType": "uint256",
-				"name": "forVotes",
-				"type": "uint256"
-			},
-			{
-				"internalType": "uint256",
-				"name": "againstVotes",
-				"type": "uint256"
-			},
-			{
-				"internalType": "uint256",
-				"name": "abstainVotes",
-				"type": "uint256"
-			},
-			{
-				"internalType": "uint256",
-				"name": "rewardAmount",
-				"type": "uint256"
-			},
-			{
-				"internalType": "uint256",
-				"name": "claimedAmount",
-				"type": "uint256"
-			},
-			{
-				"internalType": "uint256",
-				"name": "voterCount",
-				"type": "uint256"
-			},
-			{
-				"internalType": "bool",
-				"name": "deleted",
-				"type": "bool"
 			}
 		],
 		"stateMutability": "view",

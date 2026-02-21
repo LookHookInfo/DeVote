@@ -2,13 +2,13 @@ export default function Hero() {
   return (
     <div className="max-w-[85rem] px-4 py-4 sm:px-6 lg:px-8 lg:py-10 mx-auto">
       {/* Animated gradient line */}
-      <div className="h-[1px] w-full bg-gradient-to-r from-transparent via-blue-500 to-transparent my-8 opacity-50"></div>
+      <div className="h-[1px] w-full bg-gradient-to-r from-transparent via-[#a5c2ff] to-transparent my-8 opacity-50"></div>
       
       <div className="mt-5 lg:mt-12 grid lg:grid-cols-3 gap-12 items-start">
         
         {/* Header Section */}
         <div className="lg:col-span-1 space-y-4">
-          <h2 className="font-bold text-3xl text-blue-400 tracking-tight">
+          <h2 className="font-bold text-3xl text-[#a5c2ff] tracking-tight">
             Look Hook <br />
           </h2>
           <div className="space-y-3">
@@ -25,7 +25,7 @@ export default function Hero() {
         <div className="lg:col-span-2">
           <div className="grid sm:grid-cols-2 gap-x-8 gap-y-10">
             
-            {/* Community Voice - ИКОНКА ПЛЮС */}
+            {/* Community Voice */}
             <Feature 
               title="Community Voice" 
               desc="Directly influence development priorities and new product features."
@@ -60,14 +60,13 @@ export default function Hero() {
   );
 }
 
-// Sub-component for the feature cards
 function Feature({ title, desc, icon }: { title: string, desc: string, icon: React.ReactNode }) {
   return (
     <div className="flex gap-x-4 group">
       <div className="relative">
-        <div className="absolute -inset-1 bg-blue-500/20 rounded-lg blur opacity-0 group-hover:opacity-100 transition duration-300"></div>
+        <div className="absolute -inset-1 bg-[#a5c2ff]/20 rounded-lg blur opacity-0 group-hover:opacity-100 transition duration-300"></div>
         <svg
-          className="relative shrink-0 size-6 text-blue-500"
+          className="relative shrink-0 size-6 text-[#a5c2ff]"
           xmlns="http://www.w3.org/2000/svg"
           fill="none"
           viewBox="0 0 24 24"

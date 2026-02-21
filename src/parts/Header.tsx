@@ -26,11 +26,11 @@ export function Header() {
             >
               <AppLogo className="w-12 sm:w-16" />
               <span className="hidden sm:inline text-white text-2xl sm:text-3xl ml-2 sm:ml-3 font-bold">
-                De&nbsp;Vote
+                De&nbsp;<span className="text-[#a5c2ff]">Vote</span>
               </span>
             </a>
             <div className="flex items-center gap-x-4">
-              <Link to="/archive" className="text-white hover:text-gray-300">Archive</Link>
+              <Link to="/archive" className="text-white hover:text-[#a5c2ff] transition-colors font-medium">Archive</Link>
             </div>
           </div>
           <div className="sm:order-3 flex items-center gap-x-2">
@@ -45,7 +45,7 @@ export function Header() {
               detailsButton={{
                 render: () => {
                   return (
-                    <button className="flex items-center space-x-2 py-2 px-3 rounded-md bg-gray-800 text-white hover:bg-gray-700 transition-colors duration-200">
+                    <button className="flex items-center space-x-2 py-2 px-4 rounded-lg bg-[#a5c2ff] text-black font-bold hover:bg-[#8eafef] transition-all duration-200 shadow-lg shadow-blue-500/10">
                       {registeredName ? (
                         <span>{registeredName}</span>
                       ) : (

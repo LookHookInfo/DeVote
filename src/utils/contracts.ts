@@ -22,7 +22,7 @@ export const hashcoinContract = getContract({
 export const devoteContract = getContract({
   client,
   chain: chain,
-  address: '0x2Fd9c9C04b1BE92Fa166bd06B9F680683C5032cf',   // контракт 30 мин   14 вечер 0x38bb05CbBcB5249091aFc187E3EDa44B196b74d1
+  address: '0xeC655d008c76Eb606D7c79e8a3405c7EB247b653',
   abi: devoteAbi,
 });
 
@@ -30,7 +30,7 @@ export const devoteContract = getContract({
 export const ogNftContract = getContract({
   client,
   chain: chain,
-  address: '0xD5D2bEf311431F1b464E6637C4F2056EFEe1f82c',
+  address: '0xB494698522Ad959cAA50A0e82107771711fd5A49',
   abi: minErc721Abi,
 });
 

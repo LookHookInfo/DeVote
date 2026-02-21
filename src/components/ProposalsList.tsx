@@ -1,10 +1,11 @@
 import { Spinner } from './Spinner';
 import { Proposal } from '../hooks/useDeVoteContract';
-import { ProposalCard } from './ProposalCard'; // Assuming ProposalCard is in the same directory
-import { useActiveAccount } from 'thirdweb/react'; // This import is needed for ReturnType below
+import { ProposalCard } from './ProposalCard';
+import { useActiveAccount } from 'thirdweb/react';
 
-interface ActiveProposalsListProps {
-  activeProposals: Proposal[] | undefined;
+interface ProposalsListProps {
+  title: string;
+  proposals: Proposal[] | undefined;
   isLoading: boolean;
   isVotingPending: (id: bigint) => boolean;
   isClaimingPending: (id: bigint) => boolean;
@@ -12,11 +13,14 @@ interface ActiveProposalsListProps {
   handleClaimReward: (proposalId: bigint) => Promise<void>;
   tokenSymbol: string;
   account: ReturnType<typeof useActiveAccount>;
-  hasFarmNft: boolean; // New prop for FARM NFT status
+  hasFarmNft: boolean;
+  hasOgNft: boolean;
+  emptyMessage?: string;
 }
 
-export function ActiveProposalsList({
-  activeProposals,
+export function ProposalsList({
+  title,
+  proposals,
   isLoading,
   isVotingPending,
   isClaimingPending,
@@ -24,8 +28,10 @@ export function ActiveProposalsList({
   handleClaimReward,
   tokenSymbol,
   account,
-  hasFarmNft, // Destructure new prop
-}: ActiveProposalsListProps) {
+  hasFarmNft,
+  hasOgNft,
+  emptyMessage = "No proposals found."
+}: ProposalsListProps) {
 
   if (isLoading) {
     return (
@@ -37,10 +43,10 @@ export function ActiveProposalsList({
 
   return (
     <div>
-      <h2 className="text-3xl font-bold text-white mb-4">Active Proposals ({activeProposals?.length || 0})</h2>
-      {(activeProposals && activeProposals.length > 0) ? (
+      <h2 className="text-3xl font-bold text-white mb-4">{title} ({proposals?.length || 0})</h2>
+      {(proposals && proposals.length > 0) ? (
         <div className="grid sm:grid-cols-2 gap-6 mb-10">
-          {activeProposals.map((prop) => (
+          {proposals.map((prop) => (
             <ProposalCard
               key={prop.id.toString()}
               prop={prop}
@@ -50,12 +56,13 @@ export function ActiveProposalsList({
               handleVote={handleVote}
               handleClaimReward={handleClaimReward}
               tokenSymbol={tokenSymbol}
-              hasFarmNft={hasFarmNft} // Pass hasFarmNft to ProposalCard
+              hasFarmNft={hasFarmNft}
+              hasOgNft={hasOgNft}
             />
           ))}
         </div>
       ) : (
-        <p className="text-neutral-400 text-center mb-10">No active proposals found.</p>
+        <p className="text-neutral-400 text-center mb-10">{emptyMessage}</p>
       )}
     </div>
   );
