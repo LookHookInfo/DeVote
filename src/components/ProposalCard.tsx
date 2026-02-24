@@ -34,7 +34,7 @@ export function ProposalCard({
   const isVotingEnded = prop.endTime < now;
   const isClaimActive = isVotingEnded && now <= prop.claimEndTime;
 
-  const { resolvedName: creatorName } = useResolvedName(prop.creator);
+  const { resolvedName: creatorName, avatarUrl: creatorAvatar } = useResolvedName(prop.creator);
 
   const remainingPool = prop.rewardAmount - prop.claimedAmount;
 
@@ -69,9 +69,22 @@ export function ProposalCard({
         </div>
         
         <div className="flex items-center justify-between mt-3">
-          <p className="text-neutral-300 text-sm font-medium flex items-center">
-            <span className="mr-1">👤</span>By: {creatorName}
-          </p>
+          <div className="flex items-center space-x-2.5">
+            {creatorAvatar ? (
+              <img 
+                src={creatorAvatar} 
+                alt={creatorName || "Creator"} 
+                className="w-8 h-8 rounded-full object-cover border border-neutral-600 shadow-sm"
+              />
+            ) : (
+              <div className="w-8 h-8 rounded-full bg-neutral-700 flex items-center justify-center text-xs border border-neutral-600">
+                👤
+              </div>
+            )}
+            <p className="text-neutral-300 text-sm font-medium">
+              By: {creatorName}
+            </p>
+          </div>
           <span className="text-[10px] font-bold text-neutral-500 bg-neutral-900/50 px-2 py-0.5 rounded border border-neutral-700/50">
             #{prop.id.toString()}
           </span>

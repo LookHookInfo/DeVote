@@ -5,7 +5,9 @@ import { client } from '../lib/thirdweb/client';
 // ABIs
 import erc20Abi from './erc20';
 import { devoteAbi } from './devoteAbi';
-import { minErc721Abi } from './minErc721Abi'; // New import
+import { minErc721Abi } from './minErc721Abi';
+import { rewardAbi } from './rewardAbi';
+import { communityRegistryAbi } from './communityRegistryAbi';
 
 
 // --- CORE TOKENS ---
@@ -26,7 +28,7 @@ export const devoteContract = getContract({
   abi: devoteAbi,
 });
 
-// New: OG NFT Contract
+// OG NFT Contract
 export const ogNftContract = getContract({
   client,
   chain: chain,
@@ -34,12 +36,44 @@ export const ogNftContract = getContract({
   abi: minErc721Abi,
 });
 
-// New: FARM NFT Contract
+// FARM NFT Contract
 export const farmNftContract = getContract({
   client,
   chain: chain,
   address: '0xFB284cA86D797DA6f9176E51cb7836C2794111e5',
   abi: minErc721Abi,
+});
+
+// EARLY NFT Contract
+export const earlyBirdContract = getContract({
+  client,
+  chain: chain,
+  address: '0xe6dc0fe06c141329050a1b2f3e9c4a7f944450b0',
+  abi: minErc721Abi,
+});
+
+// GALXE VOTE NFT Contract
+export const galxeVoteNftContract = getContract({
+  client,
+  chain: chain,
+  address: '0x52ab3d4ed15f71b8ec153222daa9e13353e36bb3',
+  abi: minErc721Abi,
+});
+
+// MultiNFTReward Contract
+export const multiNFTRewardContract = getContract({
+  client,
+  chain: chain,
+  address: '0x14FA3fa097FcfF7439c7378D8deaa40C8d1E6b15',
+  abi: rewardAbi,
+});
+
+// Community Registry (Avatar) Contract
+export const communityRegistryContract = getContract({
+  client,
+  chain: chain,
+  address: '0xb517B91D950ba0649bab120Cc9e2b235d78acD8C',
+  abi: communityRegistryAbi,
 });
 
 export const nameContract = getContract({

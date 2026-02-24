@@ -1,6 +1,8 @@
 import { useQuery } from '@tanstack/react-query';
 import { useNameContract } from './useNameContract';
 import { useCallback } from 'react';
+import { readContract } from 'thirdweb';
+import { communityRegistryContract } from '../utils/contracts';
 
 // Helper to truncate address
 const truncateAddress = (address: string) => {
@@ -16,23 +18,49 @@ export function useResolvedName(address: string | undefined) {
     if (!address) {
       return null;
     }
-    const name = await resolveName(address);
-    return name;
+    
+    try {
+      // Fetch name and profile in parallel
+      const [name, profile] = await Promise.all([
+        resolveName(address),
+        readContract({
+          contract: communityRegistryContract,
+          method: "getProfile",
+          params: [address],
+        }).catch(err => {
+          console.error(`Failed to fetch profile for ${address}:`, err);
+          return null;
+        })
+      ]);
+
+      // Extract avatarUrl carefully. Profile is a tuple: [avatarUrl, twitter, debank, linkedin]
+      let avatarUrl = null;
+      if (profile) {
+        // Try both array and object access
+        avatarUrl = (profile as any).avatarUrl || (Array.isArray(profile) ? profile[0] : null);
+      }
+
+      return {
+        name,
+        avatarUrl: avatarUrl && avatarUrl !== "" ? avatarUrl : null
+      };
+    } catch (e) {
+      console.error("Error in useResolvedName queryFn:", e);
+      return null;
+    }
   }, [address, resolveName]);
 
-  const { data: resolvedName, isLoading, error } = useQuery({
+  const { data, isLoading, error } = useQuery({
     queryKey: ['resolvedName', address],
     queryFn: queryFn,
-    // Only fetch if address is provided
     enabled: !!address,
-    // Keep data fresh for a short period, then refetch on mount/focus
-    staleTime: 5 * 60 * 1000, // 5 minutes
-    // Background refetching
+    staleTime: 5 * 60 * 1000,
     refetchOnWindowFocus: true,
   });
 
   return {
-    resolvedName: resolvedName || (address ? truncateAddress(address) : null),
+    resolvedName: data?.name || (address ? truncateAddress(address) : null),
+    avatarUrl: data?.avatarUrl || null,
     isLoading,
     error,
   };
