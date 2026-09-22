@@ -9,7 +9,7 @@ import EarlyImg from '../assets/Early.webp';
 import GalxeImg from '../assets/Galxe.webp';
 
 const GALXE_LINK = "https://app.galxe.com/quest/bAFdwDecXS6NRWsbYqVAgh";
-const LOGO_URL = "https://bafkreihhahivg6cou6qwlbloy25vxsdqxar3donvl7l2u377tircflnoje.ipfs.dweb.link/";
+
 
 const FEATURES = [
   { label: "OG NFT holders", action: "submit proposals" },
@@ -80,7 +80,7 @@ export default function DeVote() {
 
           <div className="space-y-4">
             <h2 className="font-bold text-3xl lg:text-4xl text-gray-300 flex items-center">
-              <img src={LOGO_URL} alt="Logo" className="rounded-xl w-16 h-16 mr-3" />
+              <img src="/Logo.png" alt="Logo" className="rounded-xl w-16 h-16 mr-3" />
               Governance
             </h2>
 
